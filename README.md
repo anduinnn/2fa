@@ -24,8 +24,8 @@
 | 方面 | 措施 |
 |------|------|
 | 数据加密 | AES-256-GCM，客户端加密后传输 |
-| 密钥派生 | PBKDF2，100,000 次迭代 |
-| 用户标识 | 密码哈希 |
+| 密钥派生 | PBKDF2-SHA256，600,000 次迭代  |
+| 用户标识 | 密码哈希 (PBKDF2) |
 
 ## 部署教程
 
@@ -69,15 +69,12 @@ wrangler kv namespace create DATA_KV --preview
 name = "2fa-sync"
 main = "worker.js"
 compatibility_date = "2024-01-01"
+assets = { directory = "./public" }
 
 [[kv_namespaces]]
 binding = "DATA_KV"
 id = "xxxxxxxxxxxx"        # 替换为你的 id
 preview_id = "yyyyyyyyyyyy" # 替换为你的 preview_id
-
-[[rules]]
-type = "Text"
-globs = ["**/*.html"]
 ```
 
 ### 步骤 5: 本地测试
@@ -137,8 +134,9 @@ wrangler deploy
 
 ```
 2fa/
-├── index.html      # 前端页面（HTML + CSS + JS）
-├── worker.js       # Cloudflare Worker 入口
+├── public/
+│   └── index.html  # 前端页面
+├── worker.js       # Cloudflare Worker（只处理 /api/* 请求）
 ├── wrangler.toml   # Wrangler 配置文件
 └── README.md       # 本文档
 ```

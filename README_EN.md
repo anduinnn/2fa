@@ -25,8 +25,8 @@ Browser <--HTTPS--> Cloudflare Worker <--KV API--> KV Storage
 | Aspect | Measure |
 |--------|---------|
 | Data Encryption | AES-256-GCM, encrypted on client before transmission |
-| Key Derivation | PBKDF2, 100,000 iterations |
-| User Identification | Password hash |
+| Key Derivation | PBKDF2-SHA256, 600,000 iterations |
+| User Identification | Password hash (PBKDF2) |
 
 ## Deployment Guide
 
@@ -70,15 +70,12 @@ Fill in the `id` and `preview_id` from the previous step into `wrangler.toml`:
 name = "2fa-sync"
 main = "worker.js"
 compatibility_date = "2024-01-01"
+assets = { directory = "./public" }
 
 [[kv_namespaces]]
 binding = "DATA_KV"
 id = "xxxxxxxxxxxx"        # Replace with your id
 preview_id = "yyyyyyyyyyyy" # Replace with your preview_id
-
-[[rules]]
-type = "Text"
-globs = ["**/*.html"]
 ```
 
 ### Step 5: Local Testing (Optional)
@@ -138,8 +135,9 @@ Click the logout button in the top left to clear current session and return to l
 
 ```
 2fa/
-├── index.html      # Frontend (HTML + CSS + JS)
-├── worker.js       # Cloudflare Worker entry
+├── public/
+│   └── index.html  # Frontend
+├── worker.js       # Cloudflare Worker (handles /api/* requests only)
 ├── wrangler.toml   # Wrangler configuration
 └── README.md       # Documentation
 ```

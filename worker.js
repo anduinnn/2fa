@@ -1,5 +1,3 @@
-import HTML_CONTENT from './index.html';
-
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -19,14 +17,7 @@ export default {
       return handleAPI(request, env, corsHeaders);
     }
 
-    return new Response(HTML_CONTENT, {
-      headers: {
-        'Content-Type': 'text/html;charset=UTF-8',
-        'Cache-Control': 'no-cache',
-        'X-Content-Type-Options': 'nosniff',
-        'X-Frame-Options': 'DENY',
-      },
-    });
+    return new Response('Not Found', { status: 404 });
   },
 };
 
@@ -53,7 +44,7 @@ async function handleAPI(request, env, corsHeaders) {
 
     if (path === '/api/data' && request.method === 'PUT') {
       const body = await request.json();
-      const { key, data, salt } = body;
+      const { key, data, salt, version } = body;
 
       if (!key || key.length < 32) {
         return jsonResponse({ error: 'Invalid key' }, 400, corsHeaders);
@@ -66,6 +57,7 @@ async function handleAPI(request, env, corsHeaders) {
       const stored = JSON.stringify({
         encryptedData: data,
         salt: salt,
+        version: version || 1,
         updatedAt: Date.now(),
       });
 

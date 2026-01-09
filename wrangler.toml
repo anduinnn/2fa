@@ -1,12 +1,9 @@
 name = "2fa-sync"
 main = "worker.js"
 compatibility_date = "2024-01-01"
+assets = { directory = "./public" }
 
 [[kv_namespaces]]
 binding = "DATA_KV"
 id = "c7cdf4d7c8044af9b36f08a5e828cf12"
 preview_id = "8820785ab8904c67aaf22a85676b6e93"
-
-[[rules]]
-type = "Text"
-globs = ["**/*.html"]
