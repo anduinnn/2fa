@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2FA Authenticator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #f5f5f5;
+            --card-bg: #ffffff;
+            --text: #333333;
+            --text-secondary: #666666;
+            --border: #e0e0e0;
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --danger: #dc2626;
+            --danger-hover: #b91c1c;
+            --success: #16a34a;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #1a1a1a;
+                --card-bg: #2d2d2d;
+                --text: #e5e5e5;
+                --text-secondary: #a0a0a0;
+                --border: #404040;
+                --primary: #3b82f6;
+                --primary-hover: #2563eb;
+            }
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border);
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 6px;
+            color: var(--text-secondary);
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg);
+            color: var(--text);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+        }
+
+        button {
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 500;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            width: 100%;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+            padding: 8px 12px;
+            font-size: 12px;
+        }
+
+        .btn-danger:hover {
+            background: var(--danger-hover);
+        }
+
+        .btn-secondary {
+            background: var(--border);
+            color: var(--text);
+        }
+
+        .btn-secondary:hover {
+            background: var(--text-secondary);
+            color: white;
+        }
+
+        .token-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 12px;
+        }
+
+        .token-info {
+            flex: 1;
+            cursor: pointer;
+        }
+
+        .token-name {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .token-code {
+            font-size: 32px;
+            font-weight: 600;
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+            letter-spacing: 4px;
+        }
+
+        .token-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .progress-ring {
+            width: 36px;
+            height: 36px;
+        }
+
+        .progress-ring circle {
+            fill: none;
+            stroke-width: 3;
+        }
+
+        .progress-ring .bg {
+            stroke: var(--border);
+        }
+
+        .progress-ring .progress {
+            stroke: var(--primary);
+            stroke-linecap: round;
+            transform: rotate(-90deg);
+            transform-origin: center;
+            transition: stroke-dashoffset 1s linear;
+        }
+
+        .progress-text {
+            font-size: 11px;
+            fill: var(--text-secondary);
+            text-anchor: middle;
+            dominant-baseline: middle;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-secondary);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .copied {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--success);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 1000;
+        }
+
+        .copied.show {
+            opacity: 1;
+        }
+
+        .header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .header-actions h1 {
+            margin-bottom: 0;
+        }
+
+        .btn-icon {
+            background: none;
+            padding: 8px;
+            color: var(--text-secondary);
+        }
+
+        .btn-icon:hover {
+            color: var(--text);
+        }
+
+        .error {
+            color: var(--danger);
+            font-size: 14px;
+            margin-top: 8px;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 100;
+        }
+
+        .modal {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 24px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .modal h2 {
+            font-size: 18px;
+            margin-bottom: 16px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .modal-actions button {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Unlock Screen -->
+        <div id="unlock-screen">
+            <h1>2FA Authenticator</h1>
+            <div class="card">
+                <div id="setup-password" class="hidden">
+                    <div class="form-group">
+                        <label for="new-password">设置主密码</label>
+                        <input type="password" id="new-password" placeholder="输入密码">
+                    </div>
+                    <div class="form-group">
+                        <label for="confirm-password">确认密码</label>
+                        <input type="password" id="confirm-password" placeholder="再次输入密码">
+                    </div>
+                    <div id="setup-error" class="error hidden"></div>
+                    <div class="form-group">
+                        <button class="btn-primary" onclick="setupPassword()">设置密码</button>
+                    </div>
+                    <div style="text-align: center; margin-top: 12px;">
+                        <a href="javascript:showLoginForm()" style="color: var(--primary); font-size: 14px;">已有账户? 直接登录</a>
+                    </div>
+                </div>
+                <div id="enter-password">
+                    <div class="form-group">
+                        <label for="password">主密码</label>
+                        <input type="password" id="password" placeholder="输入密码" onkeypress="if(event.key==='Enter')unlock()">
+                    </div>
+                    <div id="unlock-error" class="error hidden"></div>
+                    <div class="form-group">
+                        <button class="btn-primary" onclick="unlock()">解锁</button>
+                    </div>
+                    <div style="text-align: center; margin-top: 12px;">
+                        <a href="javascript:showSetupForm()" style="color: var(--primary); font-size: 14px;">首次使用? 创建账户</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main App -->
+        <div id="main-app" class="hidden">
+            <div class="header-actions">
+                <button class="btn-icon" onclick="logout()" title="退出">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                </button>
+                <h1>2FA Authenticator</h1>
+                <button class="btn-icon" onclick="showAddModal()" title="添加密钥">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </button>
+            </div>
+            <div id="token-list"></div>
+            <div id="empty-state" class="empty-state hidden">
+                <p>还没有添加密钥</p>
+                <p style="margin-top: 8px; font-size: 14px;">点击 + 添加你的第一个 2FA 密钥</p>
+            </div>
+        </div>
+
+        <!-- Add Modal -->
+        <div id="add-modal" class="modal-overlay hidden">
+            <div class="modal">
+                <h2>添加新密钥</h2>
+                <div class="form-group">
+                    <label for="key-name">名称</label>
+                    <input type="text" id="key-name" placeholder="例如: GitHub">
+                </div>
+                <div class="form-group">
+                    <label for="key-secret">密钥</label>
+                    <input type="text" id="key-secret" placeholder="Base32 密钥">
+                </div>
+                <div id="add-error" class="error hidden"></div>
+                <div class="modal-actions">
+                    <button class="btn-secondary" onclick="hideAddModal()">取消</button>
+                    <button class="btn-primary" onclick="addKey()">添加</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Copied Toast -->
+        <div id="copied-toast" class="copied">已复制</div>
+    </div>
+
+    <script>
+        // State
+        let masterKey = null;
+        let keys = [];
+        let updateInterval = null;
+        let currentKeyHash = null;
+        let currentSalt = null;
+
+        // ============ Session ============
+        const SESSION_KEY = '2fa_session';
+
+        async function exportKey(key) {
+            const exported = await crypto.subtle.exportKey('raw', key);
+            return btoa(String.fromCharCode(...new Uint8Array(exported)));
+        }
+
+        async function importKey(keyStr) {
+            const keyData = Uint8Array.from(atob(keyStr), c => c.charCodeAt(0));
+            return crypto.subtle.importKey(
+                'raw', keyData, { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']
+            );
+        }
+
+        function saveSession(keyStr, keyHash, salt) {
+            sessionStorage.setItem(SESSION_KEY, JSON.stringify({ keyStr, keyHash, salt }));
+        }
+
+        function loadSession() {
+            const data = sessionStorage.getItem(SESSION_KEY);
+            return data ? JSON.parse(data) : null;
+        }
+
+        function clearSession() {
+            sessionStorage.removeItem(SESSION_KEY);
+        }
+
+        // ============ API Client ============
+        async function apiGet(keyHash) {
+            const response = await fetch(`/api/data?key=${encodeURIComponent(keyHash)}`);
+            if (!response.ok) throw new Error('API Error');
+            return response.json();
+        }
+
+        async function apiSave(keyHash, encryptedData, salt) {
+            const response = await fetch('/api/data', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: keyHash, data: encryptedData, salt: salt }),
+            });
+            if (!response.ok) throw new Error('API Error');
+            return response.json();
+        }
+
+        // ============ Key Hash ============
+        async function deriveKeyHash(password) {
+            const enc = new TextEncoder();
+            const fixedSalt = enc.encode('2fa-sync-v1-key-hash');
+
+            const keyMaterial = await crypto.subtle.importKey(
+                'raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']
+            );
+
+            const bits = await crypto.subtle.deriveBits(
+                { name: 'PBKDF2', salt: fixedSalt, iterations: 50000, hash: 'SHA-256' },
+                keyMaterial, 256
+            );
+
+            return Array.from(new Uint8Array(bits))
+                .map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        // ============ Salt ============
+        function generateSalt() {
+            const salt = crypto.getRandomValues(new Uint8Array(16));
+            return btoa(String.fromCharCode(...salt));
+        }
+
+        function decodeSalt(saltStr) {
+            return Uint8Array.from(atob(saltStr), c => c.charCodeAt(0));
+        }
+
+        // ============ Base32 ============
+        const BASE32_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+
+        function base32Decode(str) {
+            str = str.toUpperCase().replace(/[^A-Z2-7]/g, '');
+            const bits = [];
+            for (const char of str) {
+                const val = BASE32_CHARS.indexOf(char);
+                if (val === -1) continue;
+                bits.push(...val.toString(2).padStart(5, '0').split('').map(Number));
+            }
+            const bytes = [];
+            for (let i = 0; i + 8 <= bits.length; i += 8) {
+                bytes.push(parseInt(bits.slice(i, i + 8).join(''), 2));
+            }
+            return new Uint8Array(bytes);
+        }
+
+        // ============ TOTP ============
+        async function generateTOTP(secret, time = Date.now()) {
+            const counter = Math.floor(time / 30000);
+            const counterBytes = new Uint8Array(8);
+            let temp = counter;
+            for (let i = 7; i >= 0; i--) {
+                counterBytes[i] = temp & 0xff;
+                temp = Math.floor(temp / 256);
+            }
+
+            const keyData = base32Decode(secret);
+            const key = await crypto.subtle.importKey(
+                'raw',
+                keyData,
+                { name: 'HMAC', hash: 'SHA-1' },
+                false,
+                ['sign']
+            );
+
+            const signature = await crypto.subtle.sign('HMAC', key, counterBytes);
+            const hash = new Uint8Array(signature);
+
+            const offset = hash[hash.length - 1] & 0x0f;
+            const binary =
+                ((hash[offset] & 0x7f) << 24) |
+                ((hash[offset + 1] & 0xff) << 16) |
+                ((hash[offset + 2] & 0xff) << 8) |
+                (hash[offset + 3] & 0xff);
+
+            return (binary % 1000000).toString().padStart(6, '0');
+        }
+
+        // ============ Encryption ============
+        async function deriveKey(password, salt) {
+            const enc = new TextEncoder();
+            const keyMaterial = await crypto.subtle.importKey(
+                'raw',
+                enc.encode(password),
+                'PBKDF2',
+                false,
+                ['deriveKey']
+            );
+            return crypto.subtle.deriveKey(
+                {
+                    name: 'PBKDF2',
+                    salt: salt,
+                    iterations: 100000,
+                    hash: 'SHA-256'
+                },
+                keyMaterial,
+                { name: 'AES-GCM', length: 256 },
+                true,
+                ['encrypt', 'decrypt']
+            );
+        }
+
+        async function encrypt(data, key) {
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const enc = new TextEncoder();
+            const encrypted = await crypto.subtle.encrypt(
+                { name: 'AES-GCM', iv: iv },
+                key,
+                enc.encode(JSON.stringify(data))
+            );
+            const combined = new Uint8Array(iv.length + encrypted.byteLength);
+            combined.set(iv);
+            combined.set(new Uint8Array(encrypted), iv.length);
+            return btoa(String.fromCharCode(...combined));
+        }
+
+        async function decrypt(encryptedData, key) {
+            const combined = Uint8Array.from(atob(encryptedData), c => c.charCodeAt(0));
+            const iv = combined.slice(0, 12);
+            const data = combined.slice(12);
+            const decrypted = await crypto.subtle.decrypt(
+                { name: 'AES-GCM', iv: iv },
+                key,
+                data
+            );
+            return JSON.parse(new TextDecoder().decode(decrypted));
+        }
+
+        // ============ Cloud Storage ============
+        async function saveKeys() {
+            if (!masterKey || !currentKeyHash) return;
+            const encrypted = await encrypt(keys, masterKey);
+            await apiSave(currentKeyHash, encrypted, currentSalt);
+        }
+
+        async function loadKeysFromCloud(keyHash) {
+            const result = await apiGet(keyHash);
+            if (!result.exists) {
+                return { exists: false, data: null, salt: null };
+            }
+            const stored = JSON.parse(result.data);
+            return { exists: true, data: stored.encryptedData, salt: stored.salt };
+        }
+
+        // ============ UI ============
+        function showError(elementId, message) {
+            const el = document.getElementById(elementId);
+            el.textContent = message;
+            el.classList.remove('hidden');
+        }
+
+        function hideError(elementId) {
+            document.getElementById(elementId).classList.add('hidden');
+        }
+
+        function showSetupForm() {
+            document.getElementById('setup-password').classList.remove('hidden');
+            document.getElementById('enter-password').classList.add('hidden');
+        }
+
+        function showLoginForm() {
+            document.getElementById('setup-password').classList.add('hidden');
+            document.getElementById('enter-password').classList.remove('hidden');
+        }
+
+        async function setupPassword() {
+            const password = document.getElementById('new-password').value;
+            const confirm = document.getElementById('confirm-password').value;
+
+            hideError('setup-error');
+
+            if (password.length < 4) {
+                showError('setup-error', '密码至少需要4个字符');
+                return;
+            }
+
+            if (password !== confirm) {
+                showError('setup-error', '两次密码不一致');
+                return;
+            }
+
+            try {
+                currentKeyHash = await deriveKeyHash(password);
+
+                const cloudData = await loadKeysFromCloud(currentKeyHash);
+                if (cloudData.exists) {
+                    showError('setup-error', '此密码已被使用，请换一个密码或直接登录');
+                    return;
+                }
+
+                currentSalt = generateSalt();
+                masterKey = await deriveKey(password, decodeSalt(currentSalt));
+                keys = [];
+                await saveKeys();
+
+                saveSession(await exportKey(masterKey), currentKeyHash, currentSalt);
+                showMainApp();
+            } catch (error) {
+                showError('setup-error', '网络错误，请重试');
+            }
+        }
+
+        async function unlock() {
+            const password = document.getElementById('password').value;
+            hideError('unlock-error');
+
+            if (!password) {
+                showError('unlock-error', '请输入密码');
+                return;
+            }
+
+            try {
+                currentKeyHash = await deriveKeyHash(password);
+                const cloudData = await loadKeysFromCloud(currentKeyHash);
+
+                if (!cloudData.exists) {
+                    showError('unlock-error', '密码错误或账户不存在');
+                    return;
+                }
+
+                currentSalt = cloudData.salt;
+                masterKey = await deriveKey(password, decodeSalt(currentSalt));
+
+                try {
+                    keys = await decrypt(cloudData.data, masterKey);
+                } catch {
+                    showError('unlock-error', '密码错误');
+                    masterKey = null;
+                    currentKeyHash = null;
+                    currentSalt = null;
+                    return;
+                }
+
+                saveSession(await exportKey(masterKey), currentKeyHash, currentSalt);
+                showMainApp();
+            } catch (error) {
+                showError('unlock-error', '网络错误，请重试');
+            }
+        }
+
+        function showMainApp() {
+            document.getElementById('unlock-screen').classList.add('hidden');
+            document.getElementById('main-app').classList.remove('hidden');
+            renderKeys();
+            startUpdateInterval();
+        }
+
+        function logout() {
+            if (updateInterval) clearInterval(updateInterval);
+            clearSession();
+            masterKey = null;
+            keys = [];
+            currentKeyHash = null;
+            currentSalt = null;
+            document.getElementById('main-app').classList.add('hidden');
+            document.getElementById('unlock-screen').classList.remove('hidden');
+            document.getElementById('password').value = '';
+            showLoginForm();
+        }
+
+        function showAddModal() {
+            document.getElementById('key-name').value = '';
+            document.getElementById('key-secret').value = '';
+            hideError('add-error');
+            document.getElementById('add-modal').classList.remove('hidden');
+        }
+
+        function hideAddModal() {
+            document.getElementById('add-modal').classList.add('hidden');
+        }
+
+        async function addKey() {
+            const name = document.getElementById('key-name').value.trim();
+            const secret = document.getElementById('key-secret').value.trim();
+
+            hideError('add-error');
+
+            if (!name) {
+                showError('add-error', '请输入名称');
+                return;
+            }
+
+            if (!secret) {
+                showError('add-error', '请输入密钥');
+                return;
+            }
+
+            try {
+                await generateTOTP(secret);
+            } catch {
+                showError('add-error', '密钥格式无效');
+                return;
+            }
+
+            keys.push({ id: Date.now(), name, secret });
+            await saveKeys();
+            hideAddModal();
+            renderKeys();
+        }
+
+        async function deleteKey(id) {
+            if (!confirm('确定删除这个密钥吗?')) return;
+            keys = keys.filter(k => k.id !== id);
+            await saveKeys();
+            renderKeys();
+        }
+
+        function copyCode(code) {
+            navigator.clipboard.writeText(code);
+            const toast = document.getElementById('copied-toast');
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 1500);
+        }
+
+        async function renderKeys() {
+            const list = document.getElementById('token-list');
+            const empty = document.getElementById('empty-state');
+
+            if (keys.length === 0) {
+                list.innerHTML = '';
+                empty.classList.remove('hidden');
+                return;
+            }
+
+            empty.classList.add('hidden');
+
+            const now = Date.now();
+            const remaining = 30 - Math.floor((now / 1000) % 30);
+            const progress = (remaining / 30) * 100;
+            const circumference = 2 * Math.PI * 15;
+            const offset = circumference * (1 - progress / 100);
+
+            let html = '';
+            for (const key of keys) {
+                const code = await generateTOTP(key.secret);
+                html += `
+                    <div class="token-item">
+                        <div class="token-info" onclick="copyCode('${code}')">
+                            <div class="token-name">${escapeHtml(key.name)}</div>
+                            <div class="token-code">${code}</div>
+                        </div>
+                        <div class="token-actions">
+                            <svg class="progress-ring" viewBox="0 0 36 36">
+                                <circle class="bg" cx="18" cy="18" r="15"></circle>
+                                <circle class="progress" cx="18" cy="18" r="15"
+                                    stroke-dasharray="${circumference}"
+                                    stroke-dashoffset="${offset}"></circle>
+                                <text class="progress-text" x="18" y="18">${remaining}</text>
+                            </svg>
+                            <button class="btn-danger" onclick="deleteKey(${key.id})">删除</button>
+                        </div>
+                    </div>
+                `;
+            }
+            list.innerHTML = html;
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function startUpdateInterval() {
+            if (updateInterval) clearInterval(updateInterval);
+            updateInterval = setInterval(renderKeys, 1000);
+        }
+
+        // ============ Init ============
+        async function init() {
+            const session = loadSession();
+
+            if (session) {
+                try {
+                    masterKey = await importKey(session.keyStr);
+                    currentKeyHash = session.keyHash;
+                    currentSalt = session.salt;
+
+                    const cloudData = await loadKeysFromCloud(currentKeyHash);
+                    if (cloudData.exists) {
+                        keys = await decrypt(cloudData.data, masterKey);
+                        showMainApp();
+                        return;
+                    }
+                } catch {
+                    clearSession();
+                }
+            }
+
+            document.getElementById('setup-password').classList.add('hidden');
+            document.getElementById('enter-password').classList.remove('hidden');
+        }
+
+        init();
+    </script>
+</body>
+</html>

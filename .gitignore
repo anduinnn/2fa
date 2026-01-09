@@ -1,0 +1,4 @@
+.idea/
+.venv/
+.wrangler/
+node_modules/
