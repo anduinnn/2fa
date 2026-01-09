@@ -10,6 +10,7 @@ A cloud-based 2FA authenticator built on Cloudflare Workers + KV.
 - **Cloud Sync**: Data stored in Cloudflare KV, accessible across devices
 - **End-to-End Encryption**: AES-256-GCM encryption, server only stores ciphertext
 - **Zero Registration**: No email/phone required, create account with just a master password
+- **Import/Export**: JSON format backup support for data migration and local backup
 
 ## Architecture
 
@@ -123,6 +124,17 @@ After deployment, visit the output URL to start using.
 ### Logout
 
 Click the logout button in the top left to clear current session and return to login page.
+
+### Import/Export
+
+**Export Backup**:
+1. After login, click the "Export" button at the bottom of the page
+2. Download the JSON format backup file (stored in plaintext, keep it safe)
+
+**Import Backup**:
+1. Click the "Import" button at the bottom of the page
+2. Select a previously exported JSON file
+3. Duplicate keys (same name) will be skipped, existing data preserved, only new keys imported
 
 ## Important Notes
 
