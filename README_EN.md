@@ -2,7 +2,7 @@
 
 [中文文档](./README.md)
 
-A cloud-based 2FA authenticator built on Cloudflare Workers + KV, with cross-device sync support.
+A cloud-based 2FA authenticator built on Cloudflare Workers + KV.
 
 ## Features
 
@@ -10,8 +10,6 @@ A cloud-based 2FA authenticator built on Cloudflare Workers + KV, with cross-dev
 - **Cloud Sync**: Data stored in Cloudflare KV, accessible across devices
 - **End-to-End Encryption**: AES-256-GCM encryption, server only stores ciphertext
 - **Zero Registration**: No email/phone required, create account with just a master password
-- **Session Persistence**: Auto-restore login state on page refresh
-- **Dark Mode**: Automatically follows system theme
 
 ## Architecture
 
@@ -28,8 +26,7 @@ Browser <--HTTPS--> Cloudflare Worker <--KV API--> KV Storage
 |--------|---------|
 | Data Encryption | AES-256-GCM, encrypted on client before transmission |
 | Key Derivation | PBKDF2, 100,000 iterations |
-| User Identification | Password hash (separate PBKDF2, 50,000 iterations) |
-| Transport Security | Cloudflare enforced HTTPS |
+| User Identification | Password hash |
 
 ## Deployment Guide
 
@@ -144,8 +141,7 @@ Click the logout button in the top left to clear current session and return to l
 ├── index.html      # Frontend (HTML + CSS + JS)
 ├── worker.js       # Cloudflare Worker entry
 ├── wrangler.toml   # Wrangler configuration
-├── README.md       # Chinese documentation
-└── README_EN.md    # English documentation (this file)
+└── README.md       # Documentation
 ```
 
 ## License
