@@ -10,6 +10,7 @@ A cloud-based 2FA authenticator built on Cloudflare Workers + KV.
 - **Cloud Sync**: Data stored in Cloudflare KV, accessible across devices
 - **End-to-End Encryption**: AES-256-GCM encryption, server only stores ciphertext
 - **Zero Registration**: No email/phone required, create account with just a master password
+- **QR Code Scanning**: Support camera scanning, image upload, and clipboard paste to recognize QR codes
 - **Import/Export**: JSON format backup support for data migration and local backup
 
 ## Architecture
@@ -111,10 +112,22 @@ After deployment, visit the output URL to start using.
 
 ### Add 2FA Key
 
-1. Click the "+" button in the top right
-2. Enter a name (e.g., GitHub)
-3. Enter the Base32 format secret key
-4. Click "Add"
+Click the "+" button in the top right, three methods available:
+
+**Manual Input**:
+1. Enter a name (e.g., GitHub)
+2. Enter the Base32 format secret key
+3. Click "Add"
+
+**Scan QR Code**:
+1. Switch to "Scan" tab
+2. Click "Start Camera"
+3. Point the QR code at the camera, auto-fills when recognized
+
+**Upload Image**:
+1. Switch to "Upload" tab
+2. Click to select, drag and drop, or paste a screenshot
+3. Auto-fills when recognized
 
 ### Use Verification Code
 
