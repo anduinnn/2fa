@@ -294,7 +294,110 @@
         .modal-actions button {
             flex: 1;
         }
+
+        .input-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .input-tabs button {
+            flex: 1;
+            padding: 10px;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .input-tabs button.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        #qr-camera-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        #qr-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #qr-canvas {
+            display: none;
+        }
+
+        .scan-guide {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60%;
+            height: 60%;
+            border: 2px solid var(--primary);
+            border-radius: 8px;
+            pointer-events: none;
+        }
+
+        #qr-camera-status {
+            text-align: center;
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s;
+            color: var(--text-secondary);
+        }
+
+        .upload-zone:hover,
+        .upload-zone.dragover {
+            border-color: var(--primary);
+        }
+
+        #qr-preview {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 8px;
+            margin-top: 12px;
+            display: none;
+        }
+
+        #qr-preview.show {
+            display: block;
+        }
+
+        .btn-scan {
+            width: 100%;
+            margin-top: 12px;
+        }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 </head>
 <body>
     <div class="container">
@@ -368,13 +471,37 @@
         <div id="add-modal" class="modal-overlay hidden">
             <div class="modal">
                 <h2>添加新密钥</h2>
-                <div class="form-group">
-                    <label for="key-name">名称</label>
-                    <input type="text" id="key-name" placeholder="例如: GitHub">
+                <div class="input-tabs">
+                    <button class="active" onclick="switchInputTab('manual')">手动输入</button>
+                    <button onclick="switchInputTab('scan')">扫描</button>
+                    <button onclick="switchInputTab('upload')">上传</button>
                 </div>
-                <div class="form-group">
-                    <label for="key-secret">密钥</label>
-                    <input type="text" id="key-secret" placeholder="Base32 密钥">
+                <div class="tab-content active" id="tab-manual">
+                    <div class="form-group">
+                        <label for="key-name">名称</label>
+                        <input type="text" id="key-name" placeholder="例如: GitHub">
+                    </div>
+                    <div class="form-group">
+                        <label for="key-secret">密钥</label>
+                        <input type="text" id="key-secret" placeholder="Base32 密钥">
+                    </div>
+                </div>
+                <div class="tab-content" id="tab-scan">
+                    <div id="qr-camera-container">
+                        <video id="qr-video" playsinline></video>
+                        <canvas id="qr-canvas"></canvas>
+                        <div class="scan-guide"></div>
+                    </div>
+                    <div id="qr-camera-status">点击下方按钮启动摄像头</div>
+                    <button class="btn-primary btn-scan" onclick="startQrScanner()">启动摄像头</button>
+                </div>
+                <div class="tab-content" id="tab-upload">
+                    <div class="upload-zone" id="upload-zone">
+                        <p>点击选择、拖拽或粘贴图片</p>
+                        <p style="font-size: 12px; margin-top: 8px;">支持 PNG / JPG / WEBP</p>
+                    </div>
+                    <input type="file" id="qr-upload" accept="image/png,image/jpeg,image/webp" hidden>
+                    <img id="qr-preview">
                 </div>
                 <div id="add-error" class="error hidden"></div>
                 <div class="modal-actions">
@@ -395,6 +522,10 @@
         let updateInterval = null;
         let currentKeyHash = null;
         let currentSalt = null;
+
+        // QR Scanner State
+        let qrStream = null;
+        let qrScanInterval = null;
 
         // ============ Session ============
         const SESSION_KEY = '2fa_session';
@@ -501,6 +632,26 @@
                 bytes.push(parseInt(bits.slice(i, i + 8).join(''), 2));
             }
             return new Uint8Array(bytes);
+        }
+
+        // ============ OTPAuth URI ============
+        function parseOtpauthUri(uri) {
+            if (!uri || !uri.startsWith('otpauth://totp/')) {
+                return null;
+            }
+            try {
+                const url = new URL(uri);
+                const secret = url.searchParams.get('secret');
+                if (!secret) return null;
+
+                const label = decodeURIComponent(url.pathname.slice(6));
+                const issuer = url.searchParams.get('issuer');
+                let name = issuer || (label.includes(':') ? label.split(':')[0] : label) || '未命名';
+
+                return { name: name.trim(), secret: secret.replace(/\s+/g, '').toUpperCase() };
+            } catch {
+                return null;
+            }
         }
 
         // ============ TOTP ============
@@ -770,7 +921,212 @@
         }
 
         function hideAddModal() {
+            stopQrScanner();
+            document.getElementById('qr-preview').classList.remove('show');
             document.getElementById('add-modal').classList.add('hidden');
+        }
+
+        // ============ Tab Switching ============
+        function switchInputTab(tab) {
+            stopQrScanner();
+            clearUploadPreview();
+
+            const tabs = document.querySelectorAll('.input-tabs button');
+            const contents = document.querySelectorAll('.tab-content');
+            tabs.forEach(t => t.classList.remove('active'));
+            contents.forEach(c => c.classList.remove('active'));
+
+            const activeTab = document.querySelector(`.input-tabs button[onclick*="${tab}"]`);
+            const activeContent = document.getElementById(`tab-${tab}`);
+            if (activeTab) activeTab.classList.add('active');
+            if (activeContent) activeContent.classList.add('active');
+        }
+
+        function clearUploadPreview() {
+            const preview = document.getElementById('qr-preview');
+            if (preview.src && preview.src.startsWith('blob:')) {
+                URL.revokeObjectURL(preview.src);
+            }
+            preview.classList.remove('show');
+            preview.src = '';
+        }
+
+        // ============ QR Scanner ============
+        async function startQrScanner() {
+            const video = document.getElementById('qr-video');
+            const canvas = document.getElementById('qr-canvas');
+            const status = document.getElementById('qr-camera-status');
+            hideError('add-error');
+
+            if (typeof jsQR === 'undefined') {
+                showError('add-error', '二维码识别库加载失败, 请刷新页面重试');
+                return;
+            }
+
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                showError('add-error', '浏览器不支持摄像头访问');
+                return;
+            }
+
+            status.textContent = '正在请求摄像头权限...';
+
+            try {
+                qrStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+                });
+                video.srcObject = qrStream;
+                await video.play();
+
+                canvas.width = video.videoWidth || 640;
+                canvas.height = video.videoHeight || 480;
+
+                status.textContent = '扫描中...';
+                qrScanInterval = setInterval(() => scanQrFrame(video, canvas), 200);
+            } catch (err) {
+                stopQrScanner();
+                if (err.name === 'NotAllowedError') {
+                    showError('add-error', '摄像头权限被拒绝, 请在浏览器设置中允许');
+                } else if (err.name === 'NotFoundError') {
+                    showError('add-error', '未检测到摄像头设备');
+                } else {
+                    showError('add-error', '摄像头启动失败: ' + err.message);
+                }
+                status.textContent = '摄像头启动失败';
+            }
+        }
+
+        function stopQrScanner() {
+            if (qrScanInterval) {
+                clearInterval(qrScanInterval);
+                qrScanInterval = null;
+            }
+            if (qrStream) {
+                qrStream.getTracks().forEach(track => track.stop());
+                qrStream = null;
+            }
+            const video = document.getElementById('qr-video');
+            if (video) video.srcObject = null;
+            const status = document.getElementById('qr-camera-status');
+            if (status) status.textContent = '点击下方按钮启动摄像头';
+        }
+
+        function scanQrFrame(video, canvas) {
+            if (!qrStream) return;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+            if (code && code.data) {
+                stopQrScanner();
+                processQrCode(code.data);
+            }
+        }
+
+        function processQrCode(data) {
+            const parsed = parseOtpauthUri(data);
+            if (!parsed) {
+                showError('add-error', '仅支持 otpauth://totp/ 格式的二维码');
+                return;
+            }
+            document.getElementById('key-name').value = parsed.name;
+            document.getElementById('key-secret').value = parsed.secret;
+            switchInputTab('manual');
+        }
+
+        // ============ Image Upload ============
+        function setupUploadZone() {
+            const zone = document.getElementById('upload-zone');
+            const input = document.getElementById('qr-upload');
+
+            zone.addEventListener('click', () => input.click());
+
+            zone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                zone.classList.add('dragover');
+            });
+
+            zone.addEventListener('dragleave', () => {
+                zone.classList.remove('dragover');
+            });
+
+            zone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                zone.classList.remove('dragover');
+                const file = e.dataTransfer.files[0];
+                if (file) handleQrUpload(file);
+            });
+
+            input.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) handleQrUpload(file);
+                input.value = '';
+            });
+
+            document.addEventListener('paste', (e) => {
+                const modal = document.getElementById('add-modal');
+                const uploadTab = document.getElementById('tab-upload');
+                if (modal.classList.contains('hidden') || !uploadTab.classList.contains('active')) {
+                    return;
+                }
+                const items = e.clipboardData?.items;
+                if (!items) return;
+                for (const item of items) {
+                    if (item.type.startsWith('image/')) {
+                        const file = item.getAsFile();
+                        if (file) handleQrUpload(file);
+                        break;
+                    }
+                }
+            });
+        }
+
+        function handleQrUpload(file) {
+            hideError('add-error');
+            const preview = document.getElementById('qr-preview');
+
+            if (typeof jsQR === 'undefined') {
+                showError('add-error', '二维码识别库加载失败, 请刷新页面重试');
+                return;
+            }
+
+            if (!file.type.match(/^image\/(png|jpeg|webp)$/)) {
+                showError('add-error', '仅支持 PNG/JPG/WEBP 格式图片');
+                return;
+            }
+
+            if (file.size > 5 * 1024 * 1024) {
+                showError('add-error', '图片文件过大, 请选择小于 5MB 的图片');
+                return;
+            }
+
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+                if (code && code.data) {
+                    processQrCode(code.data);
+                } else {
+                    showError('add-error', '图片中未识别到二维码');
+                }
+                URL.revokeObjectURL(img.src);
+            };
+
+            img.onerror = () => {
+                showError('add-error', '图片加载失败');
+                URL.revokeObjectURL(img.src);
+            };
+
+            img.src = URL.createObjectURL(file);
+            preview.src = img.src;
+            preview.classList.add('show');
         }
 
         async function addKey() {
@@ -938,6 +1294,7 @@
 
         // ============ Init ============
         async function init() {
+            setupUploadZone();
             const session = loadSession();
 
             if (session) {
