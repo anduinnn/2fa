@@ -117,6 +117,18 @@ app.delete('/api/data', (req, res) => {
   }
 });
 
+// Serve service-worker.js with correct MIME type
+app.get('/service-worker.js', (req, res) => {
+  res.type('application/javascript');
+  res.sendFile(path.join(__dirname, '../public/service-worker.js'));
+});
+
+// Serve manifest.json with correct MIME type
+app.get('/manifest.json', (req, res) => {
+  res.type('application/json');
+  res.sendFile(path.join(__dirname, '../public/manifest.json'));
+});
+
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, '../public')));
 

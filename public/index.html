@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self'; media-src 'self' blob:;">
     <title>2FA Authenticator</title>
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="2FA Auth">
+    <link rel="apple-touch-icon" href="/icons/icon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
@@ -1010,6 +1017,137 @@
                 min-height: 40px;
             }
         }
+
+        /* Offline Status Banner */
+        .offline-banner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+            color: var(--text-inverse);
+            padding: var(--space-sm) var(--space-lg);
+            font-size: var(--text-sm);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-sm);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            animation: slide-down var(--transition-slow) var(--ease-spring);
+        }
+
+        @keyframes slide-down {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .offline-banner svg {
+            flex-shrink: 0;
+        }
+
+        /* Conflict Resolution Modal */
+        .conflict-message {
+            font-size: var(--text-sm);
+            color: var(--text-secondary);
+            margin-bottom: var(--space-lg);
+            text-align: center;
+        }
+
+        .conflict-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-lg);
+            margin-bottom: var(--space-lg);
+        }
+
+        .conflict-option {
+            padding: var(--space-lg);
+            background: var(--bg-primary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+        }
+
+        .conflict-option strong {
+            display: block;
+            font-size: var(--text-base);
+            color: var(--text-primary);
+            margin-bottom: var(--space-sm);
+        }
+
+        .conflict-time,
+        .conflict-count {
+            font-size: var(--text-sm);
+            color: var(--text-secondary);
+            margin-top: var(--space-xs);
+        }
+
+        .conflict-time span,
+        .conflict-count span {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        @media (max-width: 400px) {
+            .conflict-info {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Network Status Indicator */
+        .network-status {
+            position: fixed;
+            bottom: var(--space-lg);
+            right: var(--space-lg);
+            display: flex;
+            align-items: center;
+            gap: var(--space-xs);
+            padding: var(--space-xs) var(--space-sm);
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-full);
+            font-size: var(--text-xs);
+            color: var(--text-secondary);
+            box-shadow: var(--shadow-md);
+            z-index: 100;
+            transition: all var(--transition-normal) var(--ease-default);
+        }
+
+        .network-status .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            transition: background-color var(--transition-normal);
+        }
+
+        .network-status.online .status-dot {
+            background-color: #22C55E;
+            box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+        }
+
+        .network-status.offline .status-dot {
+            background-color: #F59E0B;
+            box-shadow: 0 0 6px rgba(245, 158, 11, 0.5);
+        }
+
+        .network-status .status-text {
+            font-weight: 500;
+        }
+
+        .network-status.online .status-text {
+            color: #22C55E;
+        }
+
+        .network-status.offline .status-text {
+            color: #F59E0B;
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js" integrity="sha384-b5Ya4Bq3qCyz39m2ISh+4DxjAIljdeFwK/BsXLuj9gugaNwAcj/ia15fxNZL9Nlx" crossorigin="anonymous"></script>
 </head>
@@ -1130,6 +1268,50 @@
 
         <!-- Copied Toast -->
         <div id="copied-toast" class="copied">已复制</div>
+
+        <!-- Network Status Indicator -->
+        <div id="network-status" class="network-status online">
+            <span class="status-dot"></span>
+            <span class="status-text">在线</span>
+        </div>
+
+        <!-- Offline Status Banner -->
+        <div id="offline-banner" class="offline-banner hidden">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+                <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>
+                <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path>
+                <path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path>
+                <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path>
+                <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+                <line x1="12" y1="20" x2="12.01" y2="20"></line>
+            </svg>
+            <span id="offline-banner-text">离线模式</span>
+        </div>
+
+        <!-- Conflict Resolution Modal -->
+        <div id="conflict-modal" class="modal-overlay hidden">
+            <div class="modal">
+                <h2>检测到数据冲突</h2>
+                <p class="conflict-message">本地缓存和云端数据不一致，请选择保留哪份数据：</p>
+                <div class="conflict-info">
+                    <div class="conflict-option">
+                        <strong>本地数据</strong>
+                        <div class="conflict-time">最后更新：<span id="local-update-time"></span></div>
+                        <div class="conflict-count">密钥数量：<span id="local-key-count"></span></div>
+                    </div>
+                    <div class="conflict-option">
+                        <strong>云端数据</strong>
+                        <div class="conflict-time">最后更新：<span id="cloud-update-time"></span></div>
+                        <div class="conflict-count">密钥数量：<span id="cloud-key-count"></span></div>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn-secondary" onclick="resolveConflict('local')">使用本地</button>
+                    <button class="btn-primary" onclick="resolveConflict('cloud')">使用云端</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -1143,6 +1325,150 @@
         // QR Scanner State
         let qrStream = null;
         let qrScanInterval = null;
+
+        // ============ Offline Manager ============
+        const OFFLINE_CONFIG = {
+            DB_NAME: '2fa-offline-db',
+            DB_VERSION: 1,
+            STORE_NAME: 'encrypted-data',
+            METADATA_KEY: '2fa_offline_metadata',
+            CACHE_EXPIRY_DAYS: 7,
+        };
+
+        const offlineManager = {
+            db: null,
+            isOnline: navigator.onLine,
+
+            async init() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(OFFLINE_CONFIG.DB_NAME, OFFLINE_CONFIG.DB_VERSION);
+                    request.onerror = () => reject(request.error);
+                    request.onsuccess = () => {
+                        this.db = request.result;
+                        resolve();
+                    };
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        if (!db.objectStoreNames.contains(OFFLINE_CONFIG.STORE_NAME)) {
+                            db.createObjectStore(OFFLINE_CONFIG.STORE_NAME, { keyPath: 'keyHash' });
+                        }
+                    };
+                });
+            },
+
+            async saveOfflineCache(keyHash, encryptedData, salt, version, cloudUpdatedAt = null) {
+                if (!this.db) {
+                    try { await this.init(); } catch { return; }
+                }
+                if (!this.db) return;
+                const now = Date.now();
+                const cacheData = {
+                    keyHash,
+                    encryptedData,
+                    salt,
+                    version: version || 2,
+                    updatedAt: cloudUpdatedAt || now,
+                    cachedAt: now,
+                    locallyModified: !cloudUpdatedAt,
+                };
+                return new Promise((resolve, reject) => {
+                    const tx = this.db.transaction([OFFLINE_CONFIG.STORE_NAME], 'readwrite');
+                    const store = tx.objectStore(OFFLINE_CONFIG.STORE_NAME);
+                    const request = store.put(cacheData);
+                    request.onsuccess = () => {
+                        this.updateMetadata(keyHash, Date.now());
+                        resolve();
+                    };
+                    request.onerror = () => reject(request.error);
+                });
+            },
+
+            async getOfflineCache(keyHash) {
+                if (!this.db) {
+                    try { await this.init(); } catch { return null; }
+                }
+                if (!this.db) return null;
+                return new Promise((resolve, reject) => {
+                    const tx = this.db.transaction([OFFLINE_CONFIG.STORE_NAME], 'readonly');
+                    const store = tx.objectStore(OFFLINE_CONFIG.STORE_NAME);
+                    const request = store.get(keyHash);
+                    request.onsuccess = () => {
+                        const data = request.result;
+                        if (!data) {
+                            resolve(null);
+                            return;
+                        }
+                        const age = Date.now() - data.cachedAt;
+                        const maxAge = OFFLINE_CONFIG.CACHE_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
+                        if (age > maxAge) {
+                            this.deleteOfflineCache(keyHash);
+                            resolve(null);
+                        } else {
+                            resolve(data);
+                        }
+                    };
+                    request.onerror = () => reject(request.error);
+                });
+            },
+
+            async deleteOfflineCache(keyHash) {
+                if (!this.db) {
+                    try { await this.init(); } catch { return; }
+                }
+                if (!this.db) return;
+                return new Promise((resolve, reject) => {
+                    const tx = this.db.transaction([OFFLINE_CONFIG.STORE_NAME], 'readwrite');
+                    const store = tx.objectStore(OFFLINE_CONFIG.STORE_NAME);
+                    const request = store.delete(keyHash);
+                    request.onsuccess = () => {
+                        this.deleteMetadata(keyHash);
+                        resolve();
+                    };
+                    request.onerror = () => reject(request.error);
+                });
+            },
+
+            updateMetadata(keyHash, timestamp) {
+                const metadata = this.getAllMetadata();
+                metadata[keyHash] = {
+                    cachedAt: timestamp,
+                    expiresAt: timestamp + (OFFLINE_CONFIG.CACHE_EXPIRY_DAYS * 24 * 60 * 60 * 1000),
+                };
+                localStorage.setItem(OFFLINE_CONFIG.METADATA_KEY, JSON.stringify(metadata));
+            },
+
+            getAllMetadata() {
+                const data = localStorage.getItem(OFFLINE_CONFIG.METADATA_KEY);
+                return data ? JSON.parse(data) : {};
+            },
+
+            deleteMetadata(keyHash) {
+                const metadata = this.getAllMetadata();
+                delete metadata[keyHash];
+                localStorage.setItem(OFFLINE_CONFIG.METADATA_KEY, JSON.stringify(metadata));
+            },
+
+            detectConflict(localData, cloudUpdatedAt) {
+                if (!localData) return false;
+                // Only detect conflict if local data was modified offline
+                if (!localData.locallyModified) return false;
+                const localTime = localData.updatedAt || 0;
+                return Math.abs(localTime - cloudUpdatedAt) > 5000;
+            },
+
+            setupOnlineListener() {
+                window.addEventListener('online', () => {
+                    this.isOnline = true;
+                    hideOfflineBanner();
+                    showToast('网络已恢复');
+                    triggerSyncCheck();
+                });
+                window.addEventListener('offline', () => {
+                    this.isOnline = false;
+                    showOfflineBanner();
+                });
+            }
+        };
 
         // ============ Utils ============
         function generateId() {
@@ -1365,7 +1691,20 @@
         async function saveKeys() {
             if (!masterKey || !currentKeyHash) return;
             const encrypted = await encrypt(keys, masterKey);
-            await apiSave(currentKeyHash, encrypted, currentSalt);
+
+            if (offlineManager.isOnline) {
+                try {
+                    await apiSave(currentKeyHash, encrypted, currentSalt);
+                    await offlineManager.saveOfflineCache(currentKeyHash, encrypted, currentSalt, CURRENT_VERSION);
+                } catch (error) {
+                    console.error('Save to cloud failed:', error);
+                    await offlineManager.saveOfflineCache(currentKeyHash, encrypted, currentSalt, CURRENT_VERSION);
+                    showToast('已保存到本地（云端同步失败）');
+                }
+            } else {
+                await offlineManager.saveOfflineCache(currentKeyHash, encrypted, currentSalt, CURRENT_VERSION);
+                showToast('已保存到本地（离线模式）');
+            }
         }
 
         async function loadKeysFromCloud(keyHash) {
@@ -1387,7 +1726,7 @@
                 throw new Error('服务器响应数据不完整');
             }
 
-            return { exists: true, data: stored.encryptedData, salt: stored.salt };
+            return { exists: true, data: stored.encryptedData, salt: stored.salt, updatedAt: stored.updatedAt };
         }
 
         // ============ UI ============
@@ -1479,44 +1818,127 @@
             }
 
             try {
-                const oldKeyHash = await deriveKeyHash(password, PBKDF2_ITERATIONS.V1_KEY_HASH);
-                const oldCloudData = await loadKeysFromCloud(oldKeyHash);
+                if (offlineManager.isOnline) {
+                    // Online mode
+                    const oldKeyHash = await deriveKeyHash(password, PBKDF2_ITERATIONS.V1_KEY_HASH);
+                    const oldCloudData = await loadKeysFromCloud(oldKeyHash);
 
-                if (oldCloudData.exists) {
-                    const migrateResult = await migrateFromV1(password, oldKeyHash, oldCloudData);
-                    if (!migrateResult.success) {
-                        showError('unlock-error', migrateResult.error);
+                    if (oldCloudData.exists) {
+                        const migrateResult = await migrateFromV1(password, oldKeyHash, oldCloudData);
+                        if (!migrateResult.success) {
+                            showError('unlock-error', migrateResult.error);
+                            return;
+                        }
+                        await offlineManager.saveOfflineCache(
+                            currentKeyHash,
+                            await encrypt(keys, masterKey),
+                            currentSalt,
+                            CURRENT_VERSION
+                        );
+                        saveSession(await exportKey(masterKey), currentKeyHash, currentSalt);
+                        showMainApp();
                         return;
                     }
+
+                    currentKeyHash = await deriveKeyHash(password, PBKDF2_ITERATIONS.V2);
+                    const cloudData = await loadKeysFromCloud(currentKeyHash);
+
+                    if (!cloudData.exists) {
+                        // Cloud has no data, try offline cache
+                        const offlineData = await offlineManager.getOfflineCache(currentKeyHash);
+                        if (offlineData) {
+                            currentSalt = offlineData.salt;
+                            masterKey = await deriveKey(password, decodeSalt(currentSalt), PBKDF2_ITERATIONS.V2);
+                            try {
+                                keys = await decrypt(offlineData.encryptedData, masterKey);
+                                saveSession(await exportKey(masterKey), currentKeyHash, currentSalt);
+                                showMainApp();
+                                showOfflineBanner('使用离线缓存（云端无数据）');
+                                return;
+                            } catch {
+                                showError('unlock-error', '密码错误');
+                                return;
+                            }
+                        } else {
+                            showError('unlock-error', '密码错误或账户不存在');
+                            return;
+                        }
+                    }
+
+                    currentSalt = cloudData.salt;
+                    masterKey = await deriveKey(password, decodeSalt(currentSalt), PBKDF2_ITERATIONS.V2);
+
+                    try {
+                        keys = await decrypt(cloudData.data, masterKey);
+
+                        // Check for conflict
+                        const offlineData = await offlineManager.getOfflineCache(currentKeyHash);
+                        if (offlineData && offlineManager.detectConflict(offlineData, cloudData.updatedAt || Date.now())) {
+                            await showConflictModal(offlineData, cloudData);
+                            return;
+                        }
+
+                        // Save to offline cache with cloud timestamp
+                        await offlineManager.saveOfflineCache(currentKeyHash, cloudData.data, currentSalt, CURRENT_VERSION, cloudData.updatedAt);
+                    } catch {
+                        showError('unlock-error', '密码错误');
+                        masterKey = null;
+                        currentKeyHash = null;
+                        currentSalt = null;
+                        return;
+                    }
+
                     saveSession(await exportKey(masterKey), currentKeyHash, currentSalt);
                     showMainApp();
-                    return;
+                    hideOfflineBanner();
+                } else {
+                    // Offline mode
+                    currentKeyHash = await deriveKeyHash(password, PBKDF2_ITERATIONS.V2);
+                    const offlineData = await offlineManager.getOfflineCache(currentKeyHash);
+
+                    if (!offlineData) {
+                        showError('unlock-error', '离线模式需要先在线登录过一次');
+                        return;
+                    }
+
+                    currentSalt = offlineData.salt;
+                    masterKey = await deriveKey(password, decodeSalt(currentSalt), PBKDF2_ITERATIONS.V2);
+
+                    try {
+                        keys = await decrypt(offlineData.encryptedData, masterKey);
+                    } catch {
+                        showError('unlock-error', '密码错误');
+                        masterKey = null;
+                        currentKeyHash = null;
+                        currentSalt = null;
+                        return;
+                    }
+
+                    saveSession(await exportKey(masterKey), currentKeyHash, currentSalt);
+                    showMainApp();
+                    showOfflineBanner();
                 }
-
-                currentKeyHash = await deriveKeyHash(password, PBKDF2_ITERATIONS.V2);
-                const cloudData = await loadKeysFromCloud(currentKeyHash);
-
-                if (!cloudData.exists) {
-                    showError('unlock-error', '密码错误或账户不存在');
-                    return;
-                }
-
-                currentSalt = cloudData.salt;
-                masterKey = await deriveKey(password, decodeSalt(currentSalt), PBKDF2_ITERATIONS.V2);
-
-                try {
-                    keys = await decrypt(cloudData.data, masterKey);
-                } catch {
-                    showError('unlock-error', '密码错误');
-                    masterKey = null;
-                    currentKeyHash = null;
-                    currentSalt = null;
-                    return;
-                }
-
-                saveSession(await exportKey(masterKey), currentKeyHash, currentSalt);
-                showMainApp();
             } catch (error) {
+                console.error('Unlock error:', error);
+                // Network error - try offline mode
+                currentKeyHash = await deriveKeyHash(password, PBKDF2_ITERATIONS.V2);
+                const offlineData = await offlineManager.getOfflineCache(currentKeyHash);
+
+                if (offlineData) {
+                    currentSalt = offlineData.salt;
+                    masterKey = await deriveKey(password, decodeSalt(currentSalt), PBKDF2_ITERATIONS.V2);
+
+                    try {
+                        keys = await decrypt(offlineData.encryptedData, masterKey);
+                        saveSession(await exportKey(masterKey), currentKeyHash, currentSalt);
+                        showMainApp();
+                        showOfflineBanner('网络错误，使用离线缓存');
+                        return;
+                    } catch {
+                        showError('unlock-error', '密码错误');
+                        return;
+                    }
+                }
                 showError('unlock-error', '网络错误，请重试');
             }
         }
@@ -2082,8 +2504,123 @@
             updateInterval = setInterval(updateDisplay, 1000);
         }
 
+        // ============ Offline UI ============
+        function updateNetworkStatus(isOnline) {
+            const indicator = document.getElementById('network-status');
+            const text = indicator.querySelector('.status-text');
+            if (isOnline) {
+                indicator.classList.remove('offline');
+                indicator.classList.add('online');
+                text.textContent = '在线';
+            } else {
+                indicator.classList.remove('online');
+                indicator.classList.add('offline');
+                text.textContent = '离线';
+            }
+        }
+
+        function showOfflineBanner(customText = null) {
+            const banner = document.getElementById('offline-banner');
+            const text = document.getElementById('offline-banner-text');
+            text.textContent = customText || '离线模式';
+            banner.classList.remove('hidden');
+            updateNetworkStatus(false);
+        }
+
+        function hideOfflineBanner() {
+            const banner = document.getElementById('offline-banner');
+            banner.classList.add('hidden');
+            updateNetworkStatus(true);
+        }
+
+        // Conflict resolution
+        let conflictData = null;
+
+        async function showConflictModal(localData, cloudData) {
+            conflictData = { local: localData, cloud: cloudData };
+
+            const modal = document.getElementById('conflict-modal');
+            document.getElementById('local-update-time').textContent = new Date(localData.updatedAt).toLocaleString('zh-CN');
+            document.getElementById('cloud-update-time').textContent = new Date(cloudData.updatedAt || Date.now()).toLocaleString('zh-CN');
+
+            try {
+                const localKeys = await decrypt(localData.encryptedData, masterKey);
+                const cloudKeys = await decrypt(cloudData.data, masterKey);
+                document.getElementById('local-key-count').textContent = localKeys.length;
+                document.getElementById('cloud-key-count').textContent = cloudKeys.length;
+            } catch {
+                document.getElementById('local-key-count').textContent = '无法解密';
+                document.getElementById('cloud-key-count').textContent = '无法解密';
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        async function resolveConflict(choice) {
+            const modal = document.getElementById('conflict-modal');
+            modal.classList.add('hidden');
+
+            if (!conflictData) return;
+
+            try {
+                if (choice === 'local') {
+                    keys = await decrypt(conflictData.local.encryptedData, masterKey);
+                    await apiSave(currentKeyHash, conflictData.local.encryptedData, currentSalt, CURRENT_VERSION);
+                    showToast('已使用本地数据并同步到云端');
+                } else {
+                    keys = await decrypt(conflictData.cloud.data, masterKey);
+                    await offlineManager.saveOfflineCache(currentKeyHash, conflictData.cloud.data, currentSalt, CURRENT_VERSION, conflictData.cloud.updatedAt);
+                    showToast('已使用云端数据并更新本地缓存');
+                }
+
+                saveSession(await exportKey(masterKey), currentKeyHash, currentSalt);
+                showMainApp();
+            } catch (error) {
+                console.error('Conflict resolution error:', error);
+                alert('数据解密失败，请重新登录');
+                logout();
+            }
+
+            conflictData = null;
+        }
+
+        async function triggerSyncCheck() {
+            if (masterKey && currentKeyHash && offlineManager.isOnline) {
+                try {
+                    const cloudData = await loadKeysFromCloud(currentKeyHash);
+                    const offlineData = await offlineManager.getOfflineCache(currentKeyHash);
+
+                    if (cloudData.exists && offlineData && offlineManager.detectConflict(offlineData, cloudData.updatedAt || Date.now())) {
+                        await showConflictModal(offlineData, cloudData);
+                    } else if (cloudData.exists) {
+                        // Sync local cache with cloud
+                        await offlineManager.saveOfflineCache(currentKeyHash, cloudData.data, currentSalt, CURRENT_VERSION, cloudData.updatedAt);
+                        keys = await decrypt(cloudData.data, masterKey);
+                        renderKeys();
+                    }
+                } catch (error) {
+                    console.error('Sync check error:', error);
+                }
+            }
+        }
+
         // ============ Init ============
         async function init() {
+            // Initialize offline manager
+            try {
+                await offlineManager.init();
+                offlineManager.setupOnlineListener();
+            } catch (error) {
+                console.error('Offline manager initialization failed:', error);
+                offlineManager.db = null;
+            }
+
+            // Set initial network status
+            updateNetworkStatus(offlineManager.isOnline);
+            if (!offlineManager.isOnline && offlineManager.db) {
+                showOfflineBanner();
+            }
+
             setupUploadZone();
             setupTokenListEvents();
             const session = loadSession();
@@ -2094,10 +2631,29 @@
                     currentKeyHash = session.keyHash;
                     currentSalt = session.salt;
 
-                    const cloudData = await loadKeysFromCloud(currentKeyHash);
-                    if (cloudData.exists) {
-                        keys = await decrypt(cloudData.data, masterKey);
+                    if (offlineManager.isOnline) {
+                        // Online: try cloud first
+                        try {
+                            const cloudData = await loadKeysFromCloud(currentKeyHash);
+                            if (cloudData.exists) {
+                                keys = await decrypt(cloudData.data, masterKey);
+                                await offlineManager.saveOfflineCache(currentKeyHash, cloudData.data, currentSalt, CURRENT_VERSION, cloudData.updatedAt);
+                                showMainApp();
+                                return;
+                            }
+                        } catch (error) {
+                            console.error('Cloud load failed, trying offline:', error);
+                        }
+                    }
+
+                    // Offline or cloud failed: use offline cache
+                    const offlineData = await offlineManager.getOfflineCache(currentKeyHash);
+                    if (offlineData) {
+                        keys = await decrypt(offlineData.encryptedData, masterKey);
                         showMainApp();
+                        if (!offlineManager.isOnline) {
+                            showOfflineBanner();
+                        }
                         return;
                     }
                 } catch {
@@ -2119,6 +2675,27 @@
                 stopQrScanner();
             }
         });
+
+        // ============ Service Worker Registration ============
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then((registration) => {
+                        console.log('[SW] Registered:', registration.scope);
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    showToast('发现新版本，请刷新页面');
+                                }
+                            });
+                        });
+                    })
+                    .catch((error) => {
+                        console.error('[SW] Registration failed:', error);
+                    });
+            });
+        }
 
         init();
     </script>

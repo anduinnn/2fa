@@ -1,0 +1,19 @@
+{
+  "name": "2FA Authenticator",
+  "short_name": "2FA Auth",
+  "description": "2FA Authenticator with end-to-end encryption and offline support",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F8FAFC",
+  "theme_color": "#2563EB",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["utilities", "productivity"]
+}

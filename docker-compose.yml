@@ -3,7 +3,7 @@ services:
     build: .
     container_name: 2fa-authenticator
     ports:
-      - "3111:3111"
+      - "3000:3000"
     volumes:
       - ./data:/app/data
     environment:
