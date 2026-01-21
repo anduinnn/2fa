@@ -198,7 +198,7 @@
         }
 
         .container {
-            max-width: 480px;
+            max-width: 720px;
             margin: 0 auto;
         }
 
@@ -364,15 +364,13 @@
 
         .token-item {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: var(--space-lg) var(--space-xl);
+            flex-direction: column;
+            padding: var(--space-lg);
             background: var(--glass-bg);
             backdrop-filter: blur(16px) saturate(180%);
             -webkit-backdrop-filter: blur(16px) saturate(180%);
             border: 1px solid var(--glass-border);
             border-radius: var(--radius-lg);
-            margin-bottom: var(--space-md);
             cursor: pointer;
             transition:
                 transform var(--transition-fast) var(--ease-out),
@@ -436,8 +434,8 @@
         }
 
         .token-info {
-            flex: 1;
             min-width: 0;
+            margin-bottom: var(--space-sm);
         }
 
         .token-name {
@@ -451,20 +449,19 @@
         }
 
         .token-code {
-            font-family: var(--font-mono);
-            font-size: var(--text-code);
+            font-family: var(--font-mono), monospace;
+            font-size: var(--text-2xl);
             font-weight: 600;
             color: var(--text-primary);
-            letter-spacing: 0.15em;
+            letter-spacing: 0.1em;
             font-variant-numeric: tabular-nums;
-            word-spacing: var(--space-sm);
         }
 
         .token-actions {
             display: flex;
             align-items: center;
+            justify-content: space-between;
             gap: var(--space-md);
-            margin-left: var(--space-lg);
         }
 
         .progress-ring {
@@ -551,6 +548,14 @@
             font-size: var(--text-sm);
         }
 
+        .no-results {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: var(--space-3xl) var(--space-xl);
+            color: var(--text-tertiary);
+            font-size: var(--text-base);
+        }
+
         .hidden {
             display: none !important;
         }
@@ -615,6 +620,96 @@
         .header-actions h1 {
             font-size: var(--text-xl);
             margin-bottom: 0;
+        }
+
+        /* Search Box */
+        .search-box {
+            position: relative;
+            margin-bottom: var(--space-xl);
+        }
+
+        .search-box .search-icon {
+            position: absolute;
+            left: var(--space-lg);
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-tertiary);
+            stroke: var(--text-tertiary);
+            width: 18px;
+            height: 18px;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .search-box input {
+            width: 100%;
+            height: 44px;
+            padding: 0 var(--space-3xl) 0 calc(var(--space-lg) + 26px);
+            font-family: var(--font-sans), sans-serif;
+            font-size: var(--text-sm);
+            border: 1.5px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            color: var(--text-primary);
+            outline: none;
+            transition:
+                border-color var(--transition-fast) var(--ease-out),
+                box-shadow var(--transition-fast) var(--ease-out);
+        }
+
+        .search-box input:hover {
+            border-color: var(--border-hover);
+        }
+
+        .search-box input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-glow);
+        }
+
+        .search-box input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .search-clear {
+            position: absolute;
+            right: var(--space-sm);
+            top: 50%;
+            transform: translateY(-50%);
+            width: 28px;
+            height: 28px;
+            padding: 0;
+            background: transparent;
+            color: var(--text-tertiary);
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color var(--transition-fast) var(--ease-out);
+        }
+
+        .search-clear:hover {
+            color: var(--text-primary);
+        }
+
+        .search-clear.hidden {
+            display: none;
+        }
+
+        /* Two Column Grid Layout */
+        .token-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--space-md);
+        }
+
+        @media (max-width: 720px) {
+            .token-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         .btn-icon {
@@ -1208,7 +1303,20 @@
                     </svg>
                 </button>
             </div>
-            <div id="token-list"></div>
+            <div class="search-box">
+                <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" id="search-input" placeholder="搜索密钥..." oninput="filterKeys()">
+                <button class="search-clear hidden" id="search-clear" onclick="clearSearch()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div id="token-list" class="token-grid"></div>
             <div id="empty-state" class="empty-state hidden">
                 <p>还没有添加密钥</p>
                 <p>点击 + 添加你的第一个 2FA 密钥</p>
@@ -2381,11 +2489,45 @@
         let lastRemaining = -1;
         // Cache generated codes to avoid regenerating every second
         let cachedCodes = new Map();
+        // Current search filter
+        let searchFilter = '';
+
+        // Search filter functions
+        function filterKeys() {
+            const input = document.getElementById('search-input');
+            const clearBtn = document.getElementById('search-clear');
+            searchFilter = input.value.toLowerCase().trim();
+
+            if (searchFilter) {
+                clearBtn.classList.remove('hidden');
+            } else {
+                clearBtn.classList.add('hidden');
+            }
+
+            renderKeys();
+        }
+
+        function clearSearch() {
+            const input = document.getElementById('search-input');
+            const clearBtn = document.getElementById('search-clear');
+            input.value = '';
+            searchFilter = '';
+            clearBtn.classList.add('hidden');
+            renderKeys();
+        }
+
+        function getFilteredKeys() {
+            if (!searchFilter) return keys;
+            return keys.filter(key =>
+                key.name.toLowerCase().includes(searchFilter)
+            );
+        }
 
         // Full render - rebuilds entire DOM (called on key changes or period reset)
         async function renderKeys() {
             const list = document.getElementById('token-list');
             const empty = document.getElementById('empty-state');
+            const filteredKeys = getFilteredKeys();
 
             if (keys.length === 0) {
                 list.innerHTML = '';
@@ -2395,6 +2537,11 @@
             }
 
             empty.classList.add('hidden');
+
+            if (filteredKeys.length === 0) {
+                list.innerHTML = '<div class="no-results">没有找到匹配的密钥</div>';
+                return;
+            }
 
             const now = Date.now();
             const remaining = 30 - Math.floor((now / 1000) % 30);
@@ -2406,7 +2553,7 @@
             // Update cached codes
             cachedCodes.clear();
             let html = '';
-            for (const key of keys) {
+            for (const key of filteredKeys) {
                 const code = await generateTOTP(key.secret);
                 cachedCodes.set(key.id, code);
                 const formattedCode = formatCode(code);
