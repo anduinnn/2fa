@@ -338,6 +338,19 @@
             box-shadow: 0 2px 4px var(--primary-glow);
         }
 
+        .btn-edit {
+            background: var(--primary-light);
+            color: var(--primary);
+            padding: var(--space-sm) var(--space-md);
+            font-size: var(--text-xs);
+        }
+
+        .btn-edit:hover {
+            background: var(--primary);
+            color: var(--text-inverse);
+            box-shadow: 0 2px 8px var(--primary-glow);
+        }
+
         .btn-danger {
             background: var(--danger-light);
             color: var(--danger);
@@ -1397,6 +1410,23 @@
             <span id="offline-banner-text">离线模式</span>
         </div>
 
+        <!-- Edit/Rename Modal -->
+        <div id="edit-modal" class="modal-overlay hidden" onclick="if(event.target===this)hideEditModal()">
+            <div class="modal">
+                <h2>重命名</h2>
+                <div class="form-group">
+                    <label for="edit-name">名称</label>
+                    <input type="text" id="edit-name" placeholder="输入新名称">
+                </div>
+                <div id="edit-error" class="error hidden"></div>
+                <input type="hidden" id="edit-key-id">
+                <div class="modal-actions">
+                    <button class="btn-secondary" onclick="hideEditModal()">取消</button>
+                    <button class="btn-primary" onclick="renameKey()">确认</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Conflict Resolution Modal -->
         <div id="conflict-modal" class="modal-overlay hidden">
             <div class="modal">
@@ -2367,6 +2397,45 @@
             renderKeys();
         }
 
+        function showEditModal(id) {
+            const key = keys.find(k => String(k.id) === String(id));
+            if (!key) return;
+            document.getElementById('edit-key-id').value = id;
+            const input = document.getElementById('edit-name');
+            input.value = key.name;
+            document.getElementById('edit-error').classList.add('hidden');
+            document.getElementById('edit-modal').classList.remove('hidden');
+            setTimeout(() => { input.focus(); input.select(); }, 100);
+        }
+
+        function hideEditModal() {
+            document.getElementById('edit-modal').classList.add('hidden');
+        }
+
+        async function renameKey() {
+            const id = document.getElementById('edit-key-id').value;
+            const newName = document.getElementById('edit-name').value.trim();
+
+            if (!newName) {
+                showError('edit-error', '名称不能为空');
+                return;
+            }
+
+            const key = keys.find(k => String(k.id) === String(id));
+            if (!key) return;
+
+            if (keys.some(k => k !== key && k.name === newName)) {
+                showError('edit-error', '该名称已存在');
+                return;
+            }
+
+            key.name = newName;
+            await saveKeys();
+            hideEditModal();
+            renderKeys();
+            showToast('已重命名');
+        }
+
         function showToast(message) {
             const toast = document.getElementById('copied-toast');
             toast.textContent = message;
@@ -2571,6 +2640,7 @@
                                     stroke-dashoffset="${offset}"></circle>
                                 <text class="progress-text" x="18" y="18">${remaining}</text>
                             </svg>
+                            <button class="btn-edit" data-action="edit">编辑</button>
                             <button class="btn-danger" data-action="delete">删除</button>
                         </div>
                     </div>
@@ -2631,6 +2701,12 @@
                 if (e.target.closest('.token-info')) {
                     const code = tokenItem.querySelector('.token-code').textContent.replace(/\s/g, '');
                     copyCode(code, tokenItem);
+                    return;
+                }
+
+                if (e.target.closest('[data-action="edit"]')) {
+                    showEditModal(keyId);
+                    return;
                 }
 
                 if (e.target.closest('[data-action="delete"]')) {
