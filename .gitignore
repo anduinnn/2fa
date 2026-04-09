@@ -2,3 +2,9 @@
 .venv/
 .wrangler/
 node_modules/
+.omc
+.claude
+.playwright-mcp
+data
+package-lock.json
+public/icons/

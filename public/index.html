@@ -427,7 +427,7 @@
         }
 
         .token-item:active {
-            transform: translateY(0);
+            transform: translateY(-2px) scale(0.98);
         }
 
         .token-item.copied-flash {
@@ -475,6 +475,11 @@
             align-items: center;
             justify-content: space-between;
             gap: var(--space-md);
+        }
+
+        .token-btn-group {
+            display: flex;
+            gap: var(--space-sm);
         }
 
         .progress-ring {
@@ -2640,8 +2645,10 @@
                                     stroke-dashoffset="${offset}"></circle>
                                 <text class="progress-text" x="18" y="18">${remaining}</text>
                             </svg>
-                            <button class="btn-edit" data-action="edit">编辑</button>
-                            <button class="btn-danger" data-action="delete">删除</button>
+                            <div class="token-btn-group">
+                                <button class="btn-edit" data-action="edit">编辑</button>
+                                <button class="btn-danger" data-action="delete">删除</button>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -2698,12 +2705,6 @@
 
                 const keyId = tokenItem.dataset.keyId;
 
-                if (e.target.closest('.token-info')) {
-                    const code = tokenItem.querySelector('.token-code').textContent.replace(/\s/g, '');
-                    copyCode(code, tokenItem);
-                    return;
-                }
-
                 if (e.target.closest('[data-action="edit"]')) {
                     showEditModal(keyId);
                     return;
@@ -2711,7 +2712,12 @@
 
                 if (e.target.closest('[data-action="delete"]')) {
                     deleteKey(keyId);
+                    return;
                 }
+
+                // 点击卡片任意区域 → 复制验证码
+                const code = tokenItem.querySelector('.token-code').textContent.replace(/\s/g, '');
+                copyCode(code, tokenItem);
             });
         }
 
